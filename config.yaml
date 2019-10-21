@@ -1,0 +1,5 @@
+smtp:
+  server : server
+  port: 25
+  sender: sender@email.net
+  recipients: [ recp@email.net ]
