@@ -7,6 +7,7 @@ import (
 	"net/smtp"
 	"os"
 
+	"github.com/fsnotify/fsnotify"
 	"gopkg.in/yaml.v2"
 )
 
@@ -17,6 +18,8 @@ func main() {
 	switch {
 	case len(args) == 1:
 		return
+	case args[1] == "files":
+		notifyFilesChanged(config)
 	case args[1] == "send_mail":
 		sendMail(config)
 	default:
@@ -31,21 +34,60 @@ type Config struct {
 		Sender     string
 		Recipients []string
 	}
+	Directory struct {
+		Name string
+	}
 }
 
 func loadConfig() Config {
 	var config Config
-	bytes := loadFile()
+	bytes := loadConfigFile()
 	config = parseYaml(bytes)
 	return config
 }
 
-func loadFile() []byte {
+func loadConfigFile() []byte {
 	f, err := ioutil.ReadFile("./config.yaml")
 	if err != nil {
 		log.Fatal(err)
 	}
 	return f
+}
+
+func notifyFilesChanged(config Config) {
+	watcher, err := fsnotify.NewWatcher()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer watcher.Close()
+
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				log.Println("event:", event)
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					log.Println("modified file:", event.Name)
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println("error:", err)
+			}
+		}
+	}()
+
+	err = watcher.Add(config.Directory.Name)
+	if err != nil {
+		log.Fatal(err)
+	}
+	<-done
 }
 
 // Get configuration
