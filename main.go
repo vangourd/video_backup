@@ -12,29 +12,35 @@ import (
 
 func main() {
 	args := os.Args
-	load_config()
+	var config Config
+	config = loadConfig()
 	switch {
 	case len(args) == 1:
 		return
 	case args[1] == "send_mail":
-		send_mail()
+		sendMail(config)
 	default:
-		println("You have inputted an invalid command")
+		println("You have input an invalid command")
 	}
 }
 
 type Config struct {
-	smtp_server string
-	smtp_port   int
+	Smtp struct {
+		Server     string
+		Port       int
+		Sender     string
+		Recipients []string
+	}
 }
 
-func load_config() {
-	b := load_file()
-	yaml := parse_yaml(b)
-	fmt.Printf("SMTP Server is: ", yaml)
+func loadConfig() Config {
+	var config Config
+	bytes := loadFile()
+	config = parseYaml(bytes)
+	return config
 }
 
-func load_file() []byte {
+func loadFile() []byte {
 	f, err := ioutil.ReadFile("./config.yaml")
 	if err != nil {
 		log.Fatal(err)
@@ -43,9 +49,8 @@ func load_file() []byte {
 }
 
 // Get configuration
-func parse_yaml(data []byte) Config {
-	conf := Config{}
-
+func parseYaml(data []byte) Config {
+	var conf Config
 	err := yaml.Unmarshal(data, &conf)
 	if err != nil {
 		log.Fatalf("error: %v", err)
@@ -53,18 +58,24 @@ func parse_yaml(data []byte) Config {
 	return conf
 }
 
-func send_mail(conf Config) {
-	conn, err := smtp.Dial("server:25")
+func sendMail(conf Config) {
+	// Assemble string from config
+	svrandport := fmt.Sprintf("%s:%d", conf.Smtp.Server, conf.Smtp.Port)
+
+	conn, err := smtp.Dial(svrandport)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := conn.Mail("from@email.net"); err != nil {
+	if err := conn.Mail(conf.Smtp.Sender); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := conn.Rcpt("to@email.net"); err != nil {
-		log.Fatal(err)
+	// FIX THIS BEFORE COMMITTING
+	for _, recipient := range conf.Smtp.Recipients {
+		if err := conn.Rcpt(recipient); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	wc, err := conn.Data()
