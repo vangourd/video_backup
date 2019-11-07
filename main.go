@@ -6,22 +6,24 @@ import (
 
 	"video_backup/email"
 	"video_backup/config"
+	"video_backup/fstracker"
 )
 
 func main() {
-	count := os.Args[1]
+	//count := os.Args[1]
 	// load my settings
-	// create email notifier
 	conf, err := config.New()
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
-	notifier, err := email.NewNotifier(conf)
+
+	// create email notifier
+	//notifier, err := email.NewNotifier(conf)
 	if err != nil {
 		log.Fatal(err)
 	}
-	notifier.Send("Want to see me count to 5?", count)
+
 	// build tree of source directory
 	// build tree of target directory
 	// compare trees find differences

@@ -17,7 +17,7 @@ type Notifier struct {
 	sender		string
 }
 
-// NewNotifier constructs a Notifier convenience wrapper
+// NewNotifier constructs an Email Notifier convenience wrapper
 func NewNotifier(conf *config.Config) (*Notifier, error) {
 	var ntfy Notifier
 	ntfy.server = conf.SMTP.Server

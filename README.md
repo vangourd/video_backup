@@ -9,4 +9,6 @@
 - [ ] Building file trees
 - [ ] Compare initial section of video file
 - [ ] Logging in multiple threads
+- [ ] Windows Service Installation
+- [ ] SystemTray Management Utility
 
