@@ -1,5 +1,5 @@
 smtp:
-  server : server
+  server : fs2.sfb.osaa.net
   port: 25
-  sender: sender@email.net
-  recipients: [ recp@email.net ]
+  sender: donotreply@osaa.net
+  recipients: [ blogan@osaa.net ]
