@@ -1,92 +1,121 @@
 package main
 
 import (
-    "path/filepath"
+    "io/ioutil"
+    "io"
     "log"
     "os"
-    "io/ioutil"
-    "fmt"
-    "time"
+    "path/filepath"
 )
 
-type Item struct {
-    name        string
-    itemType    string
-    abspath     string
-    size        int64
-    parent      *Item
-    childItems  []*Item
+func main() {
+    source := "Z:\\VideoArchives\\Archiver1"
+    target := "Y:\\"
+    scanDir(source, target)
 }
 
-func main() {
-    var start_time = time.Now()
-    Tree, err := buildTree("Z:\\VideoArchives\\Archiver1",nil)
+func itemMissing(filepath string) bool{
+    if _, err := os.Stat(filepath); os.IsNotExist(err) {
+        return true
+    }
+
+    return false
+}
+
+func copyFile(sourcePath string,targetPath string) error {
+
+    from, err := os.Open(sourcePath)
+    if err != nil {
+        log.Fatal(err)
+        return err
+    }
+    defer from.Close()
+
+    log.Printf("Cloning: %s to %s", sourcePath,targetPath)
+    to, err := os.OpenFile(targetPath, os.O_RDWR|os.O_CREATE, 0666)    
+    if err != nil {
+        log.Fatal(err)
+        return err
+    }
+    defer to.Close()
+
+    _, err = io.Copy(to, from)
+    if err != nil {
+        log.Fatal(err)
+        return err
+    }
+    return nil
+}
+
+func getChildItems(filepath string) ([]os.FileInfo, error){
+    files, err := ioutil.ReadDir(filepath)
+    if err != nil {
+        log.Fatalf("ioutil.ReadAll: %v", err)
+        return nil, err
+    }
+    return files, nil
+}
+
+func copyItem(sourcePath string, targetPath string) error {
+
+    fileInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	switch fileInfo.Mode() & os.ModeType{
+    case os.ModeDir:
+        log.Println("copying directory")
+		os.Mkdir(targetPath, os.ModeDir )
+        scanDir(sourcePath,targetPath)
+        return nil
+	default:
+        log.Println("copy regular file")
+        copyFile(sourcePath, targetPath)
+        return nil
+	}
+}
+
+func scanDir(sourceBase string,targetBase string) error {
+
+    // Get all items of current node 
+    items, err := getChildItems(sourceBase)
     if err != nil {
         log.Fatal(err)
     }
-    var end_time = time.Now()
-    log.Print(Tree)
-    log.Printf("Started: %s\r\nFinished: %s",start_time,end_time)
-}
 
-func buildTree(path string, parent *Item) (*Item, error) {
+    // For each item in node
+    for _, file := range items {
 
-    var current Item
+        // Build references for current item source and target operations
+        sourcePath := filepath.Join(sourceBase,file.Name())
+        targetPath := filepath.Join(targetBase, file.Name())
 
-    stat, err := os.Stat(path)
-
-    if err != nil{
-        log.Fatalf("os.Stat error: %d",err)
-    }
-
-    current.name = stat.Name()
-    current.abspath = path
-
-    if stat.IsDir() {
-        current.itemType = "dir"
-    } else {
-        current.itemType = "file"
-        current.size = stat.Size()
-    }
-
-    current.parent = parent
-
-    if current.itemType == "dir" {
-        files, err := ioutil.ReadDir(current.abspath)
-        if err != nil {
-            log.Fatalf("ioiutil.ReadDir: %s",err)
-        }
-        for _, file := range files {
-            child, err := buildTree(
-                filepath.Join(current.abspath,file.Name()),
-                &current)
-            if err != nil {
-                log.Fatal(err)
-            } else {
-                current.childItems = append(current.childItems, child)
-            }
+        // See if current item exists in target, 
+        if itemMissing(targetPath){
+            // copyItem handles directories and files
+            copyItem(sourcePath, targetPath)
+        } else {
+            scanDir(sourcePath,targetPath)
         }
     }
 
-    return &current, nil
-}
-
-var biggestsize int64
-
-func walkFunc(path string, info os.FileInfo, err error) error{
-    if filepath.Ext(path) == ".g64" {
-        // Splitting path to file into a list
-        item, err := os.Stat(path)
-        if err != nil {
-            log.Fatal(err)
-        }
-        // To compare to todays date
-        dt := time.Now()
-        today := dt.Format("2006-01-02")
-        if item.Name() == today {
-            fmt.Println(path)
-        }
-        
-    }
     return nil
+
+    // if current.itemType == "dir" {
+    //     files, err := ioutil.ReadDir(current.abspath)
+    //     if err != nil {
+    //         log.Fatalf("ioiutil.ReadDir: %s",err)
+    //     }
+    //     for _, file := range files {
+    //         child, err := buildTree(
+    //             filepath.Join(current.abspath,file.Name()),
+    //             &current)
+    //         if err != nil {
+    //             log.Fatal(err)
+    //         } else {
+    //             current.childItems = append(current.childItems, child)
+    //         }
+    //     }
+    // }
+
 }
